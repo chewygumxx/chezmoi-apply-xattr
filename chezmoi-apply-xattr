@@ -169,7 +169,7 @@ tag() {
 
     if result_log=$(mktemp 2>&1); then :; else
         mktemp_exit=$?
-        log FATAL "Failed to create run log"
+        log FATAL "Failed to create result log"
         log FATAL "${result_log}"
         exit $mktemp_exit
     fi

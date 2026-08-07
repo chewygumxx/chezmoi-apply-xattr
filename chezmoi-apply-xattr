@@ -1,0 +1,204 @@
+#!/bin/sh
+# vim: expandtab:shiftwidth=4
+
+# 
+# 
+# ~chewygumxx/chezmoi-apply-xattr.git:/chezmoi-apply-xattr
+# 
+# 
+
+#
+# Tags files within chezmoi target path with an xattr, if the platform and
+# destination filesystem support it, with value corresponding to chezmoi
+# management. Logs skips and failures to a dedicated log.
+#
+# Fails on paths containing newline characters.
+#
+
+# https://github.com/chewygumxx/chezmoi-apply-xattr
+
+# MIT License
+# 
+# Copyright (c) 2026 chewygumxx
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+set -eu
+
+XATTR_NAME="chezmoi"
+
+__this_file="${0##*/}"
+log_dir="${XDG_STATE_HOME:-${HOME}/.local/state}"
+log_file="${log_dir}/${__this_file}.log"
+
+VERBOSE=0
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -v|--verbose) VERBOSE=1; shift;;
+        --)           shift;     break;;
+        -*) 
+            printf '%s: unknown option: %s\n' "${__this_file}" "$1" >&2
+            exit 2
+            ;;
+        *) break ;;
+    esac
+done
+
+log() {
+    level="$1"; shift
+
+    if timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ'); then :; else
+        printf '%s: [ERROR] Failed to resolve timestamp:\n' "$__this_file" >&2
+        printf '%s: [ERROR] %s\n' "$__this_file" "$timestamp" >&2
+        exit 1
+    fi
+
+	printf '%s [%s] %s\n' "$timestamp" "$level" "$*" >> "$log_file" 2>/dev/null || true
+
+	case "$level" in
+	    NOTICE|WARN|ERROR|FATAL)
+            printf '%s: [%s] %s\n' "${__this_file}" "$level" "$*" >&2
+            ;;
+	    *) 
+            if [ "$VERBOSE" -eq 1 ]; then
+                printf '%s: [%s] %s\n' "${__this_file}" "$level" "$*" >&2
+            fi
+            ;;
+    esac
+}
+
+if ! mkdir_stdouterr="$(mkdir -p "$log_dir" 2>&1)"; then
+    log WARN "Failed to create log file directory:"
+    log WARN "$mkdir_stdouterr"
+fi
+
+# ---------------------
+# Validate Environment
+# ---------------------
+
+if ! command -v chezmoi >/dev/null 2>&1; then
+	log FATAL "Command not found: chezmoi"
+	exit 127
+fi
+
+if chezmoi_dest_dir=$(chezmoi target-path 2>&1); then :; else
+    log FATAL "Failed to resolve chezmoi target-path:"
+    log FATAL "${chezmoi_dest_dir}"
+    exit 1
+fi
+
+if command -v setfattr >/dev/null 2>&1; then
+	set_xattr() {
+        user_xattr_name="$1"
+        user_xattr_value="$2"
+        file="$3"
+		setfattr -n "user.$user_xattr_name" -v "$user_xattr_value" -- "$file"
+	}
+elif command -v xattr >/dev/null 2>&1; then
+	set_xattr() {
+        user_xattr_name="$1"
+        user_xattr_value="$2"
+        file="$3"
+		xattr -w "$user_xattr_name" "$user_xattr_value" "$file"
+	}
+else
+	log FATAL "Neither 'setfattr' nor 'xattr' found"
+	exit 127
+fi
+
+if probe_file=$(mktemp "$chezmoi_dest_dir/.chezmoi_xattr_probe.XXXXXX" 2>&1); then :; else
+    mktemp_exit=$?
+    log FATAL "Could not create probe file:"
+	log FATAL "$probe_file"
+    exit $mktemp_exit
+fi
+
+if set_xattr_stdouterr="$(set_xattr "$XATTR_NAME" "probe" "$probe_file" 2>&1)"; then :; else
+    set_xattr_exit=$?
+	log FATAL "Destination filesystem at ${chezmoi_dest_dir} apparently does not support xattrs"
+	log FATAL "$set_xattr_stdouterr"
+	rm -f "$probe_file"
+	exit $set_xattr_exit
+fi
+rm -f "$probe_file"
+
+log INFO 'xattr write support confirmed'
+
+
+# -------------
+# Apply xattr
+# -------------
+
+tag() {
+    if [ "$1" = "managed" ] || [ "$1" = "unmanaged" ]; then
+        if paths=$(chezmoi "$1" --path-style=absolute --exclude=symlinks,remove,scripts 2>&1); then :; else
+            log FATAL "Failed to resolve chezmoi $1:"
+            log FATAL "${paths}"
+            exit 1
+        fi
+    elif [ "$1" = "ignored" ]; then
+        if paths="$(chezmoi "$1" 2>&1)"; then :; else
+            log FATAL "Failed to resolve chezmoi $1:"
+            log FATAL "${paths}"
+            exit 1
+        fi
+        paths="$(printf '%s' "$paths" | while IFS= read -r file; do
+                    printf '%s/%s\n' "$chezmoi_dest_dir" "$file"
+                done)"
+    else
+        log FATAL "(tag) Tag provided not 'ignored', 'managed' or 'unmanaged': $1"
+        exit 1
+    fi
+
+    if result_log=$(mktemp 2>&1); then :; else
+        mktemp_exit=$?
+        log FATAL "Failed to create run log"
+        log FATAL "${result_log}"
+        exit $mktemp_exit
+    fi
+
+    printf "%s" "$paths" | while IFS= read -r file; do
+        # Validate either regular file or directory
+        [ ! -f "$file" ] && [ ! -d "$file" ] && continue
+        [ ! -L "$file" ] || continue
+        
+        if set_xattr_stdouterr="$(set_xattr "$XATTR_NAME" "$1" "$file" 2>&1)"; then
+            echo OK    >> "$result_log" 2>/dev/null
+            log  INFO  "Tag $1 success: ${file}"
+        else
+            echo FAIL  >> "$result_log" 2>/dev/null
+            log  ERROR "Tag $1 FAILURE: ${file}"
+            log  ERROR "$set_xattr_stdouterr"
+        fi
+    done
+
+    tagged=$(awk '$0=="OK"{c++}   END{print c+0}' "$result_log" 2>/dev/null)
+    failed=$(awk '$0=="FAIL"{c++} END{print c+0}' "$result_log" 2>/dev/null)
+    log NOTICE "Tagging $1 complete: ${tagged} tagged, ${failed} failed"
+    rm -f "$result_log" 2>/dev/null
+}
+
+tag managed
+tag unmanaged
+tag ignored
+
+if [ -r "$log_file" ]; then
+    log NOTICE "See log file at: ${log_file}"
+fi

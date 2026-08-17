@@ -50,13 +50,13 @@ log() {
         exit 1
     fi
 
-	printf '%s [%s] %s\n' "$timestamp" "$level" "$*" >> "$log_file" 2>/dev/null || true
+    printf '%s [%s] %s\n' "$timestamp" "$level" "$*" >> "$log_file" 2>/dev/null || true
 
-	case "$level" in
-	    NOTICE|WARN|ERROR|FATAL)
+    case "$level" in
+        NOTICE|WARN|ERROR|FATAL)
             printf '%s: [%s] %s\n' "${__this_file}" "$level" "$*" >&2
             ;;
-	    *) 
+        *) 
             if [ "$VERBOSE" -eq 1 ]; then
                 printf '%s: [%s] %s\n' "${__this_file}" "$level" "$*" >&2
             fi
@@ -74,8 +74,8 @@ fi
 # ---------------------
 
 if ! command -v chezmoi >/dev/null 2>&1; then
-	log FATAL "Command not found: chezmoi"
-	exit 127
+    log FATAL "Command not found: chezmoi"
+    exit 127
 fi
 
 if chezmoi_dest_dir=$(chezmoi target-path 2>&1); then :; else
@@ -85,37 +85,37 @@ if chezmoi_dest_dir=$(chezmoi target-path 2>&1); then :; else
 fi
 
 if command -v setfattr >/dev/null 2>&1; then
-	set_xattr() {
+    set_xattr() {
         user_xattr_name="$1"
         user_xattr_value="$2"
         file="$3"
-		setfattr -n "user.$user_xattr_name" -v "$user_xattr_value" -- "$file"
-	}
+        setfattr -n "user.$user_xattr_name" -v "$user_xattr_value" -- "$file"
+    }
 elif command -v xattr >/dev/null 2>&1; then
-	set_xattr() {
+    set_xattr() {
         user_xattr_name="$1"
         user_xattr_value="$2"
         file="$3"
-		xattr -w "$user_xattr_name" "$user_xattr_value" "$file"
-	}
+        xattr -w "$user_xattr_name" "$user_xattr_value" "$file"
+    }
 else
-	log FATAL "Neither 'setfattr' nor 'xattr' found"
-	exit 127
+    log FATAL "Neither 'setfattr' nor 'xattr' found"
+    exit 127
 fi
 
 if probe_file=$(mktemp "$chezmoi_dest_dir/.chezmoi_xattr_probe.XXXXXX" 2>&1); then :; else
     mktemp_exit=$?
     log FATAL "Could not create probe file:"
-	log FATAL "$probe_file"
+    log FATAL "$probe_file"
     exit $mktemp_exit
 fi
 
 if set_xattr_stdouterr="$(set_xattr "$XATTR_NAME" "probe" "$probe_file" 2>&1)"; then :; else
     set_xattr_exit=$?
-	log FATAL "Destination filesystem at ${chezmoi_dest_dir} apparently does not support xattrs"
-	log FATAL "$set_xattr_stdouterr"
-	rm -f "$probe_file"
-	exit $set_xattr_exit
+    log FATAL "Destination filesystem at ${chezmoi_dest_dir} apparently does not support xattrs"
+    log FATAL "$set_xattr_stdouterr"
+    rm -f "$probe_file"
+    exit $set_xattr_exit
 fi
 rm -f "$probe_file"
 
@@ -140,8 +140,8 @@ tag() {
             exit 1
         fi
         paths="$(printf '%s' "$paths" | while IFS= read -r file; do
-                    printf '%s/%s\n' "$chezmoi_dest_dir" "$file"
-                done)"
+            printf '%s/%s\n' "$chezmoi_dest_dir" "$file"
+        done)"
     else
         log FATAL "(tag) Tag provided not 'ignored', 'managed' or 'unmanaged': $1"
         exit 1
@@ -158,7 +158,7 @@ tag() {
         # Validate either regular file or directory
         [ ! -f "$file" ] && [ ! -d "$file" ] && continue
         [ ! -L "$file" ] || continue
-        
+
         if set_xattr_stdouterr="$(set_xattr "$XATTR_NAME" "$1" "$file" 2>&1)"; then
             echo OK    >> "$result_log" 2>/dev/null
             log  INFO  "Tag $1 success: ${file}"

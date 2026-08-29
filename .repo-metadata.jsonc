@@ -1,0 +1,25 @@
+// vim:set expandtab shiftwidth=4 filetype=jsonc:
+// SPDX-License-Identifier: GPL-3.0-only
+
+//
+//
+// ~chewygumxx/chezmoi-apply-xattars.git
+// ::: :/.repo-metadata.jsonc
+//
+//
+
+{
+    "$schema": "https://raw.githubusercontent.com/chewygumxx/apply-repo-metadata-jsonc/refs/tags/v2/schema.json",
+    "name":  "chezmoi-apply-xattars",
+    "owner": "chewygumxx",
+    "slug":  "chewygumxx/chezmoi-apply-xattars",
+    "default_branch": "main",
+    "description": "A POSIX sh utility that tags files under a chezmoi target path with a user.chezmoi extended attribute (xattr), denoting whether each file is managed, unmanaged, or ignored.",
+    "topics": [ "chezmoi", "xattar" ],
+    "license": {
+        "filepath":  "./LICENSE",
+        "spdx_id":   "GPL-3.0-only",
+        "full_name": "GNU General Public License v3.0 only",
+        "url":       "https://spdx.org/licenses/GPL-3.0-only"
+    }
+}

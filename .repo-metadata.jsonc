@@ -3,19 +3,20 @@
 
 //
 //
-// ~chewygumxx/chezmoi-apply-xattars.git
+// ~chewygumxx/chezmoi-apply-xattr.git
 // ::: :/.repo-metadata.jsonc
 //
 //
 
 {
-    "$schema": "https://raw.githubusercontent.com/chewygumxx/apply-repo-metadata-jsonc/refs/tags/v2/schema.json",
-    "name":  "chezmoi-apply-xattars",
+    "$schema": "https://raw.githubusercontent.com/chewygumxx/sync-repo-metadata/refs/tags/v2/schema.json",
+    "name":  "chezmoi-apply-xattr",
     "owner": "chewygumxx",
-    "slug":  "chewygumxx/chezmoi-apply-xattars",
+    "slug":  "chewygumxx/chezmoi-apply-xattr",
     "default_branch": "main",
     "description": "A POSIX sh utility that tags files under a chezmoi target path with a user.chezmoi extended attribute (xattr), denoting whether each file is managed, unmanaged, or ignored.",
-    "topics": [ "chezmoi", "xattar" ],
+    "topics": [ "chezmoi", "xattr" ],
+    "immutable_releases": true,
     "license": {
         "filepath":  "./LICENSE",
         "spdx_id":   "GPL-3.0-only",

@@ -1,3 +1,13 @@
+<!-- vim:set expandtab shiftwidth=2 filetype=markdown: -->
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+
+<!--
+   -
+   - ~chewygumxx/chezmoi-apply-xattr.git
+   - ::: :/README.md
+   -
+   -->
+
 # chezmoi-apply-xattr
 
 A POSIX `sh` utility that tags files under a [chezmoi](https://www.chezmoi.io/)
@@ -48,17 +58,18 @@ avoids the deadlock.
 
 Place the script anywhere on `$PATH`, e.g. via chezmoi itself:
 
-```jsonc
-// ~/.local/share/chezmoi/.chezmoiexternals/chezmoi-apply-xattr.jsonc
-// Assumes '~/.local/bin' is a PATH directory
+```toml
+# ~/.local/share/chezmoi/.chezmoiexternals/chezmoi-apply-xattr.toml
+# Assumes '~/.local/bin' is a PATH directory
 
-{
-    ".local/bin/chezmoi-apply-xattr": {
-        "type": "file",
-        "executable": true,
-        "url": "https://github.com/chewygumxx/chezmoi-apply-xattr/releases/download/v1.0.0/chezmoi-apply-xattr"
-    }
-}
+{{ if or (lookPath "xattr") (lookPath "setfattr") }}
+[".local/bin/chezmoi-apply-xattr"]
+    type = "archive-file"
+    url = {{ gitHubLatestAssetURL "chewygumxx/chezmoi-apply-xattr" "chezmoi-apply-xattr-v*.tar.gz" | quote }}
+    path = "chezmoi-apply-xattr"
+    executable = true
+    refreshPeriod = "168h"
+{{ end }}
 ```
 
 Since invoking this via chezmoi `run_` script deadlocks (see above), include it

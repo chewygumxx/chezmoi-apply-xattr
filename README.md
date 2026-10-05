@@ -1,5 +1,16 @@
-<!-- vim:set expandtab shiftwidth=2 filetype=markdown: -->
-<!-- SPDX-License-Identifier: GPL-3.0-only -->
+---
+ctime: 2026-08-08
+mtime: 2026-10-05
+spdx: GPL-3.0-only
+title: chezmoi-apply-xattr
+description: >-
+  Tags files under a chezmoi target path with a user.chezmoi xattr: managed,
+  unmanaged or ignored.
+tags:
+  - chezmoi
+  - xattr
+  - sh
+---
 
 <!--
    -
@@ -126,3 +137,5 @@ with `-v`.
 - Paths containing newline characters are not supported (the script reads
   `chezmoi managed`/`unmanaged`/`ignored` output line-by-line).
 - Symlinks are intentionally skipped rather than tagged or dereferenced.
+
+<!-- vim:set expandtab shiftwidth=2 filetype=markdown: -->
